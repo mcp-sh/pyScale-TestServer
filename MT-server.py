@@ -1,15 +1,14 @@
-#!/usr/bin/env python3
-
 import socket
+import threading
 import time
-import datetime
 import random
-import sys
+import datetime
 
-HOST = '127.0.0.1'
+# HOST = ''
 PORT = int(sys.argv[1])
-# PORT = 65436
+# PORT = 1034
 
+msg_count = 0
 
 def craftMessage():
     ct = datetime.datetime.now().strftime("%H:%M:%S %d/%m/%Y")
@@ -25,17 +24,32 @@ def craftMessage():
 
     return string
 
+def threaded_client(conn):
+    string = craftMessage()
+    rt = random.randint(1,5)
+    time.sleep(rt)
+    print(f'Sending msg number: {msg_count}')
+    conn.send(str.encode(string))
+    conn.close()
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind(('', PORT))
-    s.listen()
-    print(f'Waiting for Connections on port {PORT}')
-    conn, addr = s.accept()
-    with conn:
-        print('Connected by', addr)
-        while True:
-            count = craftMessage()
-            randomInt = random.randint(1, 8)
-            conn.sendall(count.encode())
-            print("Sleeping for " + str(randomInt) + " seconds")
-            time.sleep(randomInt)
+ServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    ServerSocket.bind(('', PORT))
+except socket.error as e:
+    print(str(e))
+
+print(f"Waiting for connection on {PORT}")
+ServerSocket.listen(5)
+
+while True:
+    conn, address = ServerSocket.accept()
+    print('Connected to: ' + address[0] + ':' + str(address[1]))
+    x = threading.Thread(target=threaded_client, args=(conn, ))
+    print('Starting Thread')
+    active_threads = threading.active_count()
+    msg_count += 1
+    print(f'Active Threads: {active_threads}, Message Count: {msg_count}')
+    x.start()
+
+ServerSocket.close()
